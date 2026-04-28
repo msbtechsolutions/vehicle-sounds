@@ -1,0 +1,137 @@
+#include "SoftwareSerial.h"
+#include "DFRobotDFPlayerMini.h"
+
+SoftwareSerial mySoftwareSerial(10, 11);
+DFRobotDFPlayerMini myDFPlayer;
+
+// ================= PINS =================
+const int ignitionPin   = 2;
+const int leftSignalPin = 3;
+const int rightSignalPin= 4;
+const int doorPin       = 5;
+
+// ================= STATES =================
+bool isEngineOn = false;
+
+bool leftActive = false;
+bool rightActive = false;
+bool doorState = false;
+
+// ================= TIMERS =================
+unsigned long lastLeftTime = 0;
+unsigned long lastRightTime = 0;
+
+const int signalTimeout = 700; // blink filter
+
+// ================= SOUND CONTROL =================
+bool isPlaying = false;
+unsigned long playStartTime = 0;
+int playDuration = 2000; // default
+
+void playSound(int track, int durationMs, bool loopMode=false) {
+  myDFPlayer.stop(); // stop previous
+  delay(100);
+
+  if(loopMode){
+    myDFPlayer.loop(track);
+  } else {
+    myDFPlayer.play(track);
+  }
+
+  isPlaying = true;
+  playStartTime = millis();
+  playDuration = durationMs;
+}
+
+// ================= SETUP =================
+void setup() {
+  Serial.begin(9600);
+  mySoftwareSerial.begin(9600);
+
+  pinMode(ignitionPin, INPUT);
+  pinMode(leftSignalPin, INPUT);
+  pinMode(rightSignalPin, INPUT);
+  pinMode(doorPin, INPUT);
+
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println("DFPlayer Error!");
+    while(true);
+  }
+
+  myDFPlayer.volume(25);
+  Serial.println("System Ready...");
+}
+
+// ================= LOOP =================
+void loop() {
+
+  unsigned long now = millis();
+
+  // ====== AUTO STOP NORMAL SOUNDS ======
+  if (isPlaying && (now - playStartTime > playDuration)) {
+    isPlaying = false;
+  }
+
+  // ================= IGNITION =================
+  int ignition = digitalRead(ignitionPin);
+
+  if (ignition == HIGH && !isEngineOn) {
+    Serial.println("Ignition ON");
+    playSound(1, 2000); // Welcome
+    isEngineOn = true;
+  }
+
+  if (ignition == LOW && isEngineOn) {
+    Serial.println("Ignition OFF");
+    playSound(4, 3000); // Bye
+    isEngineOn = false;
+  }
+
+  // ================= LEFT SIGNAL =================
+  if (digitalRead(leftSignalPin) == HIGH) {
+    lastLeftTime = now;
+
+    if (!leftActive && !isPlaying) {
+      Serial.println("Left Signal START");
+      playSound(2, 0, true); // loop
+      leftActive = true;
+    }
+  }
+
+  if (leftActive && (now - lastLeftTime > signalTimeout)) {
+    Serial.println("Left Signal STOP");
+    myDFPlayer.stop();
+    leftActive = false;
+  }
+
+  // ================= RIGHT SIGNAL =================
+  if (digitalRead(rightSignalPin) == HIGH) {
+    lastRightTime = now;
+
+    if (!rightActive && !isPlaying) {
+      Serial.println("Right Signal START");
+      playSound(3, 0, true); // loop
+      rightActive = true;
+    }
+  }
+
+  if (rightActive && (now - lastRightTime > signalTimeout)) {
+    Serial.println("Right Signal STOP");
+    myDFPlayer.stop();
+    rightActive = false;
+  }
+
+  // ================= DOOR =================
+  int doorNow = digitalRead(doorPin);
+
+  if (doorNow == HIGH && !doorState && !isPlaying) {
+    Serial.println("Door Open");
+    playSound(5, 2000);
+    doorState = true;
+  }
+
+  if (doorNow == LOW && doorState) {
+    doorState = false;
+  }
+
+}fb

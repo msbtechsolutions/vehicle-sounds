@@ -1,0 +1,27 @@
+#include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
+
+// RX (10), TX (11)
+SoftwareSerial mySerial(10, 11);
+DFRobotDFPlayerMini myDFPlayer;
+
+void setup() {
+  // සන්නිවේදනය ආරම්භ කිරීම
+  mySerial.begin(9600);
+  Serial.begin(9600);
+
+  // DFPlayer එක ආරම්භ වී ඇත්දැයි බැලීම (Delay වෙනුවට මෙය භාවිතා වේ)
+  if (myDFPlayer.begin(mySerial)) {
+    Serial.println(F("DFPlayer Online."));
+    
+    myDFPlayer.volume(20);  // ශබ්දය සකසයි
+    myDFPlayer.play(1);    // පළමු ගොනුව වහාම වාදනය කරයි
+  } else {
+    Serial.println(F("Error: Check SD Card/Connection"));
+  }
+}
+
+void loop() {
+  // මෙහි කිසිදු delay() එකක් නැත. 
+  // ඔබට අවශ්‍ය වෙනත් ඕනෑම කාර්යයක් මෙහි එකවර සිදු කළ හැක.
+}

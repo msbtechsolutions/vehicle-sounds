@@ -1,0 +1,68 @@
+#include "SoftwareSerial.h"
+#include "DFRobotDFPlayerMini.h"
+#include "RTClib.h"
+
+SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+RTC_DS3231 rtc;
+
+const int ignitionPin = 2; 
+bool isEngineOn = false;
+
+void setup() {
+  Serial.begin(9600);
+  mySoftwareSerial.begin(9600);
+  pinMode(ignitionPin, INPUT);
+
+  // DFPlayer Check
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println("DFPlayer Error!");
+    while(true);
+  }
+  
+  // RTC Check (RTC එක නැතත් වැඩ කරන්න setup කර ඇත)
+  if (!rtc.begin()) {
+    Serial.println("RTC Not Found! Defaulting to Morning.");
+  }
+
+  myDFPlayer.volume(25);
+  Serial.println("System Ready...");
+}
+
+void loop() {
+  int status = digitalRead(ignitionPin);
+
+  // යතුර ඔන් කළ විට
+  if (status == HIGH && isEngineOn == false) {
+    Serial.println("Ignition ON - Greeting...");
+    playGreeting();
+    isEngineOn = true;
+    delay(2000); 
+  }
+
+  // යතුර ඕෆ් කළ විට
+  if (status == LOW && isEngineOn == true) {
+    Serial.println("Ignition OFF - Bye Bye...");
+    myDFPlayer.play(4); // 0004.mp3 - Bye
+    isEngineOn = false;
+    delay(5000); 
+  }
+  
+  delay(100);
+}
+
+void playGreeting() {
+  DateTime now = rtc.now();
+  int hour = now.hour();
+  
+  // RTC එකේ වෙලාව අවුල් නම් (උදා: වසර 2000 නම්) උදේ කියලා හිතන්න
+  if (now.year() < 2020) hour = 8; 
+
+  if (hour >= 5 && hour < 12) {
+    myDFPlayer.play(1); // 0001.mp3 - Morning
+  } else if (hour >= 12 && hour < 18) {
+    myDFPlayer.play(2); // 0002.mp3 - Afternoon
+  } else {
+    myDFPlayer.play(3); // 0003.mp3 - Evening
+  }
+}
